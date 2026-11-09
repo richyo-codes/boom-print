@@ -208,7 +208,7 @@ jobs:
       - name: Install Linux desktop dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libgtk-4-dev liblzma-dev libmimalloc-dev libmimalloc2.0 libpulse-dev libsecret-1-dev libssl-dev curl git unzip xz-utils zip libglu1-mesa pkg-config libstdc++-12-dev libasound2-dev mpv libmpv-dev software-properties-common lld llvm
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libgtk-4-dev liblzma-dev libmimalloc-dev libpulse-dev libsecret-1-dev libssl-dev curl git unzip xz-utils zip libglu1-mesa pkg-config libstdc++-12-dev libasound2-dev mpv libmpv-dev software-properties-common lld llvm
           sudo apt-get install -y mpv squashfs-tools patchelf desktop-file-utils zsync
 
           # Some Flutter/Dart toolchains look for linker binaries under llvm-18 path.
@@ -313,7 +313,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config libgtk-4-dev liblzma-dev \
-            libmimalloc-dev libmimalloc2.0 libpulse-dev libsecret-1-dev \
+            libmimalloc-dev libpulse-dev libsecret-1-dev \
             libssl-dev curl git unzip xz-utils zip libglu1-mesa \
             libstdc++-12-dev libasound2-dev mpv libmpv-dev lld llvm
 
@@ -450,7 +450,7 @@ jobs:
           sudo apt-get install -y ubuntu-keyring gnupg ca-certificates apt-transport-https
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config libgtk-3-dev libgtk-4-dev liblzma-dev \
-            libmimalloc-dev libmimalloc2.0 libpulse-dev libsecret-1-dev libssl-dev curl git \
+            libmimalloc-dev libpulse-dev libsecret-1-dev libssl-dev curl git \
             unzip xz-utils zip libglu1-mesa libstdc++-12-dev libasound2-dev \
             mpv libmpv-dev software-properties-common lld llvm \
             squashfs-tools patchelf desktop-file-utils zsync python3-venv fakeroot
@@ -567,7 +567,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config libgtk-3-dev libgtk-4-dev \
-            liblzma-dev libmimalloc-dev libmimalloc2.0 libpulse-dev libsecret-1-dev \
+            liblzma-dev libmimalloc-dev libpulse-dev libsecret-1-dev \
             libssl-dev curl git unzip xz-utils zip libglu1-mesa \
             libstdc++-12-dev libasound2-dev mpv libmpv-dev \
             software-properties-common lld llvm
@@ -686,7 +686,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config libgtk-3-dev libgtk-4-dev \
-            liblzma-dev libmimalloc-dev libmimalloc2.0 libpulse-dev libsecret-1-dev \
+            liblzma-dev libmimalloc-dev libpulse-dev libsecret-1-dev \
             libssl-dev curl git unzip xz-utils zip libglu1-mesa \
             libstdc++-12-dev libasound2-dev mpv libmpv-dev \
             software-properties-common lld llvm dpkg-dev
@@ -790,7 +790,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config libgtk-3-dev libgtk-4-dev \
-            liblzma-dev libmimalloc-dev libmimalloc2.0 libpulse-dev libsecret-1-dev \
+            liblzma-dev libmimalloc-dev libpulse-dev libsecret-1-dev \
             libssl-dev curl git unzip xz-utils zip libglu1-mesa \
             libstdc++-12-dev libasound2-dev mpv libmpv-dev \
             software-properties-common lld llvm rpm
