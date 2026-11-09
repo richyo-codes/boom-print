@@ -17,7 +17,7 @@ import 'package:boomprint/screenshot_storage.dart';
 /// Usage:
 ///   `flutter run --dart-define=BOOMPRINT_DEMO=true`
 ///   or
-///   `dart tool/seed_demo_screenshots.dart` to seed screenshots first,
+///   `dart tools/seed_demo_screenshots.dart` to seed screenshots first,
 ///   then run with `--demo`.
 class DemoConnectionController extends ConnectionController {
   /// Fake telemetry that cycles through print states for realistic demo.

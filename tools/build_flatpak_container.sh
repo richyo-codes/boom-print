@@ -11,7 +11,7 @@ TMP_OUT_DIR="/tmp/rnd_bambu_rtsp-flatpak"
 
 usage() {
   cat <<'EOF'
-Usage: ./tool/build_flatpak_container.sh [--tmp] [--out-dir PATH]
+Usage: ./tools/build_flatpak_container.sh [--tmp] [--out-dir PATH]
 
   --tmp           Store Flatpak builder artifacts under /tmp.
   --out-dir PATH   Store Flatpak builder artifacts under PATH.

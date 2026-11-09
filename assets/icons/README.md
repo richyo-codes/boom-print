@@ -8,7 +8,7 @@ Files
 Exporting PNGs
 
 - Requires `inkscape` or `rsvg-convert` installed locally.
-- Run: `bash tool/export_icons.sh 1024`
+- Run: `bash tools/export_icons.sh 1024`
 
 Generating launcher icons (via flutter_launcher_icons)
 

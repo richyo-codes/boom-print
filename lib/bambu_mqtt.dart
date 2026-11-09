@@ -334,7 +334,17 @@ class BambuMqtt {
       final code = _asInt(event['code']);
       final attr = _asInt(event['attr']);
       if (code == null || attr == null) continue;
-      events.add(BambuHmsEvent(code: code, attr: attr));
+      events.add(
+        BambuHmsEvent(
+          code: code,
+          attr: attr,
+          message: _firstNonEmptyString([
+            event['message'],
+            event['description'],
+            event['msg'],
+          ]),
+        ),
+      );
     }
     return events;
   }
@@ -622,6 +632,11 @@ class BambuMqtt {
     int plateIndex = 1,
     List<int>? amsMapping,
     bool useAms = true,
+    bool timelapse = true,
+    bool bedLevelling = true,
+    bool flowCalibration = true,
+    bool vibrationCalibration = true,
+    bool layerInspection = true,
   }) async {
     final seq = (_seq++).toString();
     final printerPath = _toSdcardPath(projectPath);
@@ -644,12 +659,12 @@ class BambuMqtt {
         'file': '',
         'url': projectUrl,
         'md5': '',
-        'timelapse': true,
+        'timelapse': timelapse,
         'bed_type': 'auto',
-        'bed_levelling': true,
-        'flow_cali': true,
-        'vibration_cali': true,
-        'layer_inspect': true,
+        'bed_levelling': bedLevelling,
+        'flow_cali': flowCalibration,
+        'vibration_cali': vibrationCalibration,
+        'layer_inspect': layerInspection,
         'ams_mapping': amsMapping ?? <int>[],
         'use_ams': useAms,
       },

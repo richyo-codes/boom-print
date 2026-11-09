@@ -4,14 +4,14 @@
         {
             "label": "configure-linux-gtk3",
             "type": "shell",
-            "command": "${workspaceFolder}/tool/configure_linux_variant.sh",
+            "command": "${workspaceFolder}/tools/configure_linux_variant.sh",
             "args": ["gtk3"],
             "problemMatcher": []
         },
         {
             "label": "configure-linux-gtk4",
             "type": "shell",
-            "command": "${workspaceFolder}/tool/configure_linux_variant.sh",
+            "command": "${workspaceFolder}/tools/configure_linux_variant.sh",
             "args": ["gtk4"],
             "problemMatcher": []
         }

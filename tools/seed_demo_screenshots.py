@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generates sample screenshot images for the BoomPrint screenshot gallery.
 
-Run:  python3 tool/seed_demo_screenshots.py
+Run:  python3 tools/seed_demo_screenshots.py
 
 This creates placeholder PNGs with gradient backgrounds and timestamps so
 the gallery UI looks populated. Useful for staging marketing screenshots.

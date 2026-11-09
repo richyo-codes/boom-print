@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:boomprint/log_redaction.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 
@@ -41,8 +42,10 @@ abstract final class SettingsSecureStorage {
       );
     } catch (error, stackTrace) {
       debugPrint(
-        'SettingsSecureStorage.readSnapshot failed; falling back to non-secure storage: '
-        '$error',
+        redactLogText(
+          'SettingsSecureStorage.readSnapshot failed; falling back to non-secure storage: '
+          '$error',
+        ),
       );
       debugPrintStack(stackTrace: stackTrace);
       return const SecureSettingsSnapshot();
@@ -64,8 +67,11 @@ abstract final class SettingsSecureStorage {
       return true;
     } catch (error, stackTrace) {
       debugPrint(
-        'SettingsSecureStorage.writeSnapshot failed; keeping plaintext fallback in app storage: '
-        '$error',
+        redactLogText(
+          'SettingsSecureStorage.writeSnapshot failed; keeping plaintext fallback in app storage: '
+          '$error',
+          secrets: [specialCode, genericRtspPassword, customUrl],
+        ),
       );
       debugPrintStack(stackTrace: stackTrace);
       return false;

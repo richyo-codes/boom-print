@@ -9,7 +9,7 @@ Source0:        %{name}-%{version}.tar.gz
 BuildArch:      x86_64
 AutoReqProv:    no
 
-Requires:       gtk3
+Requires:       @GTK_REQUIRES@
 Requires:       mpv-libs
 Requires:       pulseaudio-libs
 Requires:       alsa-lib

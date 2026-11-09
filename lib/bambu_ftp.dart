@@ -10,6 +10,7 @@ import 'dart:typed_data';
 import 'package:ftpconnect/ftpconnect.dart';
 import 'package:intl/intl.dart';
 import 'package:boomprint/bambu_lan.dart';
+import 'package:boomprint/log_redaction.dart';
 
 class BambuFtp {
   final BambuLanConfig config;
@@ -26,7 +27,7 @@ class BambuFtp {
     final useFtps = config.useFtps;
     SecurityType securityType = useFtps ? SecurityType.ftps : SecurityType.ftp;
 
-    var logger = Logger(isEnabled: true);
+    final logger = Logger(isEnabled: false);
 
     FTPConnect ftp;
     if (useFtps) {
@@ -44,7 +45,10 @@ class BambuFtp {
         );
       } catch (e) {
         stderr.writeln(
-          'Curl FTP backend unavailable, falling back to socket backend: $e',
+          redactLogText(
+            'Curl FTP backend unavailable, falling back to socket backend: $e',
+            secrets: [config.accessCode],
+          ),
         );
         ftp = FTPConnect(
           config.printerIp,
@@ -52,7 +56,7 @@ class BambuFtp {
           pass: config.accessCode,
           port: useFtps ? config.ftpPort : 21,
           securityType: securityType,
-          showLog: true,
+          showLog: false,
           logger: logger,
           timeout: const Duration(seconds: 15).inSeconds,
         );
@@ -64,7 +68,7 @@ class BambuFtp {
         pass: config.accessCode,
         port: useFtps ? config.ftpPort : 21,
         securityType: securityType,
-        showLog: true,
+        showLog: false,
         logger: logger,
         timeout: const Duration(seconds: 15).inSeconds,
       );

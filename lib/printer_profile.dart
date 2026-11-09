@@ -235,7 +235,7 @@ final class PrinterProfile {
       ),
       PrinterUrlType.bambuX1C ||
       PrinterUrlType.bambuP1S ||
-      PrinterUrlType.bambuX2C ||
+      PrinterUrlType.bambuX2D ||
       PrinterUrlType.bambuH2C ||
       PrinterUrlType.bambuH2D ||
       PrinterUrlType.bambuH2S =>

@@ -3,6 +3,7 @@ import 'package:boomprint/connection_preflight.dart';
 import 'package:boomprint/printer_firmware.dart';
 import 'package:boomprint/settings_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 
 String? formatNozzleInfo(BambuPrintStatus? ps) {
@@ -133,44 +134,161 @@ class PrintControlButtons extends StatelessWidget {
   }
 }
 
-class PrinterFaultBanner extends StatelessWidget {
+class PrinterFaultBanner extends StatefulWidget {
   final BambuPrintStatus status;
-  final VoidCallback? onOpenHmsGuide;
 
-  const PrinterFaultBanner({
-    super.key,
-    required this.status,
-    this.onOpenHmsGuide,
-  });
+  const PrinterFaultBanner({super.key, required this.status});
+
+  @override
+  State<PrinterFaultBanner> createState() => _PrinterFaultBannerState();
+}
+
+class _PrinterFaultBannerState extends State<PrinterFaultBanner> {
+  final Set<String> _dismissed = {};
+
+  @override
+  void didUpdateWidget(covariant PrinterFaultBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final active = _notices().map((notice) => notice.key).toSet();
+    // Telemetry updates must not revive a dismissed condition. Clearing it on
+    // the printer allows a later recurrence of that condition to appear again.
+    _dismissed.retainWhere(active.contains);
+  }
+
+  List<_PrinterNotice> _notices() {
+    final status = widget.status;
+    final notices = <String, _PrinterNotice>{};
+    for (final event in status.hms) {
+      final key = 'hms:${event.catalogCode}';
+      notices[key] = _PrinterNotice(
+        key: key,
+        message:
+            event.knownMessage ??
+            'The printer reported a hardware condition with no available '
+                'description. Check the printer display for details.',
+        code: 'HMS ${event.displayCode}',
+        informational: event.isInformational,
+        error: event.isError,
+      );
+    }
+    final message = status.printerMessage?.trim();
+    if (status.printError != null && status.printError != 0) {
+      final hex = status.printError!
+          .toRadixString(16)
+          .padLeft(8, '0')
+          .toUpperCase();
+      notices['print:${status.printError}'] = _PrinterNotice(
+        key: 'print:${status.printError}',
+        message: message?.isNotEmpty == true
+            ? message!
+            : 'The printer reported a print error. Check the printer display '
+                  'for details before continuing.',
+        code:
+            'Print error ${hex.substring(0, 4)}-${hex.substring(4)} '
+            '(${status.printError})',
+        error: true,
+      );
+    } else if (message?.isNotEmpty == true) {
+      notices['message:$message'] = _PrinterNotice(
+        key: 'message:$message',
+        message: message!,
+      );
+    }
+    return notices.values.toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (!status.hasPrinterFault &&
-        (status.printerMessage == null || status.printerMessage!.isEmpty)) {
-      return const SizedBox.shrink();
-    }
-    final hms = status.hms.isEmpty ? null : status.hms.first;
-    final message = status.printerMessage?.trim().isNotEmpty == true
-        ? status.printerMessage!
-        : hms != null
-        ? 'Hardware fault ${hms.displayCode} reported by the printer.'
-        : 'Printer error ${status.printError} reported by the printer.';
-    return MaterialBanner(
-      backgroundColor: Theme.of(context).colorScheme.errorContainer,
-      leading: Icon(
-        Icons.error_outline,
-        color: Theme.of(context).colorScheme.onErrorContainer,
-      ),
-      content: Text(
-        message,
-        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
-      ),
-      actions: [
-        if (hms != null && onOpenHmsGuide != null)
-          TextButton(onPressed: onOpenHmsGuide, child: const Text('Guidance')),
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final notice in _notices())
+          if (!_dismissed.contains(notice.key))
+            Material(
+              key: ValueKey(notice.key),
+              color: notice.error
+                  ? colors.errorContainer
+                  : notice.informational
+                  ? colors.surfaceContainerHighest
+                  : colors.tertiaryContainer,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 4, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Icon(
+                        notice.error
+                            ? Icons.error_outline
+                            : notice.informational
+                            ? Icons.info_outline
+                            : Icons.warning_amber_rounded,
+                        color: notice.error
+                            ? colors.onErrorContainer
+                            : notice.informational
+                            ? colors.onSurfaceVariant
+                            : colors.onTertiaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SelectableText(notice.message),
+                          if (notice.code != null) ...[
+                            const SizedBox(height: 4),
+                            SelectableText(
+                              notice.code!,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Copy printer message',
+                      icon: const Icon(Icons.copy_outlined),
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(
+                            text: [notice.message, ?notice.code].join('\n'),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      tooltip: 'Dismiss',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() {
+                        _dismissed.add(notice.key);
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+            ),
       ],
     );
   }
+}
+
+class _PrinterNotice {
+  final String key;
+  final String message;
+  final String? code;
+  final bool informational;
+  final bool error;
+
+  const _PrinterNotice({
+    required this.key,
+    required this.message,
+    this.code,
+    this.informational = false,
+    this.error = false,
+  });
 }
 
 class FilamentStatusPanel extends StatelessWidget {

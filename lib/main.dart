@@ -4,7 +4,9 @@ import 'package:path/path.dart' as path;
 import 'package:boomprint/app_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:boomprint/bambu_lan.dart';
+import 'package:boomprint/bambu_hms_catalog.g.dart' show bambuHmsCatalogLicense;
 import 'package:boomprint/bambu_mqtt.dart';
+import 'package:boomprint/log_redaction.dart';
 import 'package:boomprint/feature_flags.dart';
 import 'package:boomprint/connection_controller.dart';
 import 'package:boomprint/settings_manager.dart';
@@ -24,14 +26,26 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'window_drag_controller.dart';
 
-// GTK4 Linux video texture interop mode for local testing.
-// const LinuxGtk4TextureInterop kLinuxGtk4TextureInterop =
-//     LinuxGtk4TextureInterop.eglImageBridge;
+// GTK4 Linux video texture interop mode for local testing. The build helper
+// supplies MEDIA_KIT_GTK4_TEXTURE_INTEROP as either direct or egl-image.
+const String kLinuxGtk4TextureInteropName = String.fromEnvironment(
+  'MEDIA_KIT_GTK4_TEXTURE_INTEROP',
+  defaultValue: 'direct',
+);
 const LinuxGtk4TextureInterop kLinuxGtk4TextureInterop =
-    LinuxGtk4TextureInterop.directSharedTexture;
+    kLinuxGtk4TextureInteropName == 'egl-image'
+    ? LinuxGtk4TextureInterop.eglImageBridge
+    : LinuxGtk4TextureInterop.directSharedTexture;
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(
+    () => Stream.value(
+      LicenseEntryWithLineBreaks([
+        'bambulan HMS catalog',
+      ], bambuHmsCatalogLicense),
+    ),
+  );
   final cli = _parseCliArgs(args);
   await SettingsManager.loadSettings(
     overridePath: cli.configPath,
@@ -356,6 +370,8 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
   StreamSubscription<Duration>? _bufferPosSub;
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<String>? _errorSub;
+  StreamSubscription<PlayerLog>? _playerLogSub;
+  StreamSubscription<Duration>? _positionTraceSub;
   DateTime? _lastErrorToastAt;
   StreamSubscription<bool>? _playingSub;
   bool _showVideoControls = false;
@@ -363,7 +379,6 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
   String? _videoToastMessage;
   bool _videoToastIsError = false;
   Timer? _controlsHideTimer;
-  Timer? _autoplayKickTimer;
   Timer? _videoToastTimer;
   Timer? _resumeProbeTimer;
   DateTime? _backgroundedAt;
@@ -375,12 +390,22 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
 
   ConnectionController get _connection => context.read<ConnectionController>();
 
+  String _redactLog(String message) => redactLogText(
+    message,
+    secrets: [
+      SettingsManager.settings.specialCode,
+      SettingsManager.settings.genericRtspPassword,
+    ],
+  );
+
+  void _logDebug(String message) => debugPrint(_redactLog(message));
+
   Future<void> _takeScreenshot({bool useJpeg = false}) async {
     try {
       final format = useJpeg ? 'image/jpeg' : 'image/png';
       final extension = useJpeg ? 'jpg' : 'png';
       final state = player.state;
-      debugPrint(
+      _logDebug(
         '[Screenshot] begin playing=${state.playing} buffering=${state.buffering} '
         'completed=${state.completed} position=${state.position} duration=${state.duration} '
         'size=${state.width}x${state.height} playlist=${state.playlist} format=$format',
@@ -397,14 +422,14 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
       } catch (_) {
         // Fall through and let the screenshot call report the real failure.
       }
-      debugPrint(
+      _logDebug(
         '[Screenshot] firstFrameReady=$firstFrameReady elapsed=${gateWatch.elapsedMilliseconds}ms',
       );
 
       final screenshotData = await player
           .screenshot(format: format, includeLibassSubtitles: false)
           .timeout(const Duration(seconds: 6));
-      debugPrint(
+      _logDebug(
         '[Screenshot] captureResult=${screenshotData == null ? 'null' : '${screenshotData.length} bytes'}',
       );
 
@@ -648,7 +673,7 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
     final hwdec = enabled
         ? (_hardwareAccelerationCopyEnabled ? 'auto-copy' : 'auto')
         : 'no';
-    debugPrint(
+    _logDebug(
       '[Video] rebuild controller hwAccel=$_hardwareAccelerationEnabled '
       'copy=$_hardwareAccelerationCopyEnabled supported=${isAccelSupported()} '
       'enabled=$enabled hwdec=$hwdec',
@@ -678,9 +703,9 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
     _bufferPosSub?.cancel();
     _durationSub?.cancel();
     _errorSub?.cancel();
+    _playerLogSub?.cancel();
+    _positionTraceSub?.cancel();
     _playingSub?.cancel();
-    _autoplayKickTimer?.cancel();
-    _autoplayKickTimer = null;
     _resumeProbeTimer?.cancel();
     _resumeProbeTimer = null;
     _stallTimer?.cancel();
@@ -724,7 +749,7 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
     final prevCopy = _hardwareAccelerationCopyEnabled;
     final nextHw = settings.hardwareAccelerationEnabled;
     final nextCopy = settings.hardwareAccelerationCopyEnabled;
-    debugPrint(
+    _logDebug(
       '[Settings] reload hardwareAccelerationEnabled prev=$prevHw next=$nextHw '
       'copy prev=$prevCopy next=$nextCopy '
       'streaming=${connection.isStreaming} currentStream=${connection.currentStreamUrl}',
@@ -774,9 +799,10 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
     _bufferPosSub?.cancel();
     _durationSub?.cancel();
     _errorSub?.cancel();
+    _playerLogSub?.cancel();
+    _positionTraceSub?.cancel();
     _playingSub?.cancel();
     _controlsHideTimer?.cancel();
-    _autoplayKickTimer?.cancel();
     _videoToastTimer?.cancel();
     _resumeProbeTimer?.cancel();
     _listeningController?.removeListener(_handleConnectionStateChanged);
@@ -832,7 +858,6 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
 
   Future<void> _stopStream() async {
     _resumeProbeTimer?.cancel();
-    _autoplayKickTimer?.cancel();
     _stallTimer?.cancel();
     if (mounted) {
       setState(() {
@@ -848,13 +873,12 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
     try {
       await player.stop().timeout(const Duration(seconds: 2));
     } catch (e) {
-      debugPrint('[Video] stop timed out or failed: $e');
+      _logDebug('[Video] stop timed out or failed: $e');
     }
   }
 
   void _handleAppBackgrounded() {
     _resumeProbeTimer?.cancel();
-    _autoplayKickTimer?.cancel();
     _stallTimer?.cancel();
     _backgroundedAt ??= DateTime.now();
     // Do not query the native player while Android is transitioning it to the
@@ -888,7 +912,7 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
           reopenUrl: url,
         );
       } catch (error) {
-        debugPrint('[Video] long-resume player recovery failed: $error');
+        _logDebug('[Video] long-resume player recovery failed: $error');
       }
       unawaited(connection.reconnectMqttIfNeeded());
       return;
@@ -903,7 +927,6 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
       // Resume probing below will force a reconnect if playback is still stale.
     }
 
-    _startAutoplayKick(url);
     _startStallMonitor();
     _scheduleResumeProbe(url);
 
@@ -1071,6 +1094,10 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
     _playingSub?.cancel();
 
     _bufferingSub = player.stream.buffering.listen((b) {
+      _logDebug(
+        '[VideoState] buffering=$b playing=${player.state.playing} '
+        'position=${player.state.position} size=${player.state.width}x${player.state.height}',
+      );
       if (!mounted) return;
       setState(() {
         _buffering = b;
@@ -1085,6 +1112,7 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
       _recomputeBufferFraction();
     });
     _errorSub = player.stream.error.listen((msg) {
+      _logDebug('[VideoState] error=$msg');
       // Throttle error toasts to avoid spam
       final now = DateTime.now();
       if (_lastErrorToastAt == null ||
@@ -1098,10 +1126,36 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
       _attemptReconnect(reason: 'error: $msg');
     });
     _playingSub = player.stream.playing.listen((playing) {
+      _logDebug(
+        '[VideoState] playing=$playing buffering=${player.state.buffering} '
+        'position=${player.state.position} completed=${player.state.completed}',
+      );
       if (!mounted) return;
       setState(() {
         _isPlaying = playing;
       });
+    });
+    _positionTraceSub = player.stream.position.listen((position) {
+      if (position == Duration.zero || position.inSeconds % 5 == 0) {
+        _logDebug(
+          '[VideoState] position=$position playing=${player.state.playing} '
+          'buffering=${player.state.buffering}',
+        );
+      }
+    });
+    _playerLogSub = player.stream.log.listen((log) {
+      if (const {
+        'cplayer',
+        'demux',
+        'ffmpeg',
+        'cache',
+        'vd',
+        'vo',
+      }.contains(log.prefix)) {
+        _logDebug(
+          '[VideoMpv] level=${log.level} prefix=${log.prefix} text=${log.text}',
+        );
+      }
     });
   }
 
@@ -1127,7 +1181,7 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
     if (!mounted) return;
     _videoToastTimer?.cancel();
     setState(() {
-      _videoToastMessage = message;
+      _videoToastMessage = _redactLog(message);
       _videoToastIsError = isError;
     });
     _videoToastTimer = Timer(duration, () {
@@ -1212,7 +1266,7 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
           _attemptReconnect(reason: 'stalled ${stalledFor.inSeconds}s');
         }
       } catch (error) {
-        debugPrint('[Video] stall monitor lost native player: $error');
+        _logDebug('[Video] stall monitor lost native player: $error');
         timer.cancel();
         _attemptReconnect(reason: 'native player unavailable', immediate: true);
       }
@@ -1277,14 +1331,16 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
   }
 
   Future<void> _openMediaAndEnsurePlaying(String url) async {
-    await player.open(Media(url), play: false);
-    _startAutoplayKick(url);
-    await WidgetsBinding.instance.endOfFrame;
-    try {
-      await player.play();
-    } catch (e) {
-      debugPrint('[Video] initial play failed, relying on autoplay kick: $e');
-    }
+    _logDebug(
+      '[VideoOpen] begin url=$url statePlaying=${player.state.playing} '
+      'buffering=${player.state.buffering}',
+    );
+    await player.open(Media(url), play: true);
+    _logDebug(
+      '[VideoOpen] complete statePlaying=${player.state.playing} '
+      'buffering=${player.state.buffering} position=${player.state.position} '
+      'size=${player.state.width}x${player.state.height}',
+    );
   }
 
   Future<void> _switchCamera(int cameraIndex) async {
@@ -1306,45 +1362,6 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
         _showVideoToast('Camera switch failed: $e');
       }
     }
-  }
-
-  void _startAutoplayKick(String url) {
-    _autoplayKickTimer?.cancel();
-    final startedAt = DateTime.now();
-    _autoplayKickTimer = Timer.periodic(const Duration(milliseconds: 350), (
-      timer,
-    ) async {
-      final connection = _connection;
-      if (!mounted ||
-          !connection.isStreaming ||
-          connection.currentStreamUrl != url) {
-        timer.cancel();
-        return;
-      }
-      final state = player.state;
-      final elapsed = DateTime.now().difference(startedAt);
-
-      // Stop once playback is really moving.
-      if (state.playing && state.position > Duration.zero) {
-        timer.cancel();
-        return;
-      }
-
-      // Give up after a short window to avoid endless retries.
-      if (elapsed > const Duration(seconds: 8)) {
-        timer.cancel();
-        return;
-      }
-
-      if (!state.playing || state.position == Duration.zero) {
-        try {
-          await player.play();
-        } catch (error) {
-          debugPrint('[Video] autoplay recovery failed: $error');
-          timer.cancel();
-        }
-      }
-    });
   }
 
   Future<void> _openSettings() async {
@@ -1402,9 +1419,13 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
         child: Stack(
           children: [
             Positioned.fill(
-              child: widget.demoVideoSurface
-                  ? const _DemoVideoPreview()
-                  : Video(controller: controller),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return widget.demoVideoSurface
+                      ? const _DemoVideoPreview()
+                      : Video(controller: controller);
+                },
+              ),
             ),
             if (printStatus != null)
               Positioned(
@@ -1668,15 +1689,7 @@ class _StreamPageState extends State<StreamPage> with WidgetsBindingObserver {
           );
     final faultBanner = model.printStatus == null
         ? null
-        : PrinterFaultBanner(
-            status: model.printStatus!,
-            onOpenHmsGuide: () {
-              final hms = model.printStatus!.hms;
-              if (hms.isNotEmpty) {
-                _openExternalUrl(hms.first.wikiUrl);
-              }
-            },
-          );
+        : PrinterFaultBanner(status: model.printStatus!);
     final videoPane = Column(
       children: [
         Expanded(

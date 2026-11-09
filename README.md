@@ -73,7 +73,7 @@ The app previews the generated URL for the selected format and keeps the same se
 
 ## Development Notes
 
-- GTK4 rendering internals and fallback logic: `docs/GTK4_VIDEO_RENDERING.md`
+- GTK3/GTK4 runner selection and local SDK setup: `docs/LINUX_GTK_FVM.md`
 
 ## Printer Requirements
 

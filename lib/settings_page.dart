@@ -363,23 +363,15 @@ class _SettingsPageState extends State<SettingsPage> {
         return;
       }
       if (!mounted) return;
-      final result = await FilePicker.pickFiles(
+      final files = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
-        withData: true, // ensure bytes are available on all platforms
       );
-      if (result == null || result.files.isEmpty) return;
+      if (files.isEmpty) return;
       if (!mounted) return;
-      final file = result.files.single;
-      if (file.bytes == null) {
-        // Shouldn't happen with withData: true, but guard anyway
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to read selected file.')),
-        );
-        return;
-      }
-
-      final content = utf8.decode(file.bytes!);
+      final file = files.single;
+      final content = utf8.decode(await file.readAsBytes());
+      if (!mounted) return;
       final dynamic decoded = jsonDecode(content);
       if (decoded is! Map<String, dynamic>) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1256,7 +1248,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           // Show template variable inputs for Bambu X1C format
                           if (selectedFormat == PrinterUrlType.bambuX1C ||
                               selectedFormat == PrinterUrlType.bambuP1S ||
-                              selectedFormat == PrinterUrlType.bambuX2C ||
+                              selectedFormat == PrinterUrlType.bambuX2D ||
                               selectedFormat == PrinterUrlType.bambuH2C ||
                               selectedFormat == PrinterUrlType.bambuH2D ||
                               selectedFormat == PrinterUrlType.bambuH2S) ...[

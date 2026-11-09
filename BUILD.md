@@ -60,7 +60,7 @@ If video is black or playback fails, verify `libmpv` is present and on the libra
 
 ### Windows (EXE + MSI + MSIX)
 - EXE bundle: `flutter build windows` (output under `build/windows/x64/runner/Release/`)
-- MSI installer: `pwsh -NoProfile -ExecutionPolicy Bypass -File tool/build_msi.ps1 -Configuration Release`
+- MSI installer: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build_msi.ps1 -Configuration Release`
 - MSIX packaging is configured via `msix_config` in `pubspec.yaml`.
   - Create MSIX: `flutter pub run msix:create`
 - Requirements: Visual Studio 2022, Windows 10/11 SDK, and for MSI packaging either WiX v4 (`wix`) or `.NET SDK` (the script auto-installs `wix` tool).
@@ -90,7 +90,7 @@ If video is black or playback fails, verify `libmpv` is present and on the libra
 - Analyze: `flutter analyze`
 - Test: `flutter test` (coverage: `flutter test --coverage`)
 - Build: `flutter build apk|appbundle|linux|windows|macos`
-- Windows MSI: `pwsh -NoProfile -ExecutionPolicy Bypass -File tool/build_msi.ps1 -Configuration Release`
+- Windows MSI: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build_msi.ps1 -Configuration Release`
 - Windows MSIX: `flutter pub run msix:create`
 
 ## Project Layout

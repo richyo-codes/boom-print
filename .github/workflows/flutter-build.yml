@@ -233,7 +233,7 @@ jobs:
       - name: Select Linux runner variant
         shell: bash
         run: |
-          bash ./tool/select_linux_runner.sh "$LINUX_GTK_VARIANT"
+          bash ./tools/select_linux_runner.sh "$LINUX_GTK_VARIANT"
           if [[ "$LINUX_GTK_VARIANT" == "gtk4" ]]; then
             echo "LINUX_GTK_ARTIFACT_SUFFIX=-gtk4" >> "$GITHUB_ENV"
           else
@@ -275,6 +275,125 @@ jobs:
           version: ${{ env.SEMVER }}
           filename: boomprint-linux-build${{ env.LINUX_GTK_ARTIFACT_SUFFIX }}
           path: build/linux/x64/release/bundle/**
+          append-max-detail-suffix: true
+          retention-days: 7
+
+  linux_gtk4:
+    name: Linux GTK4 (prebuilt custom Flutter)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    env:
+      FLUTTER_GTK4_REPOSITORY: https://github.com/richyo-codes/flutter.git
+      FLUTTER_GTK4_BRANCH: 3.48.0-gtk4.issue94804.20260925
+      FLUTTER_GTK4_SHA: 1e75e574e6a580fff095ebe83343276fd29df100
+      FLUTTER_PREBUILT_ENGINE_VERSION: ffd16dd1cbc92510632687343958b952a705945f
+      FLUTTER_STORAGE_BASE_URL: https://pub-79a02b1963fb4da6b5e4e4816e8b7146.r2.dev
+      FLUTTER_ENGINE_STORAGE_BASE_URL: https://pub-79a02b1963fb4da6b5e4e4816e8b7146.r2.dev
+      FLUTTER_LINUX_GTK: gtk4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Ensure Git LFS assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v git-lfs >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y git-lfs
+          fi
+          git lfs install --local
+          git lfs pull
+
+      - name: Install Linux GTK4 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-4-dev liblzma-dev \
+            libmimalloc-dev libmimalloc2.0 libpulse-dev libsecret-1-dev \
+            libssl-dev curl git unzip xz-utils zip libglu1-mesa \
+            libstdc++-12-dev libasound2-dev mpv libmpv-dev lld llvm
+
+      - name: Set up Dart for FVM
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Install FVM
+        shell: bash
+        run: |
+          dart pub global activate fvm 4.2.0
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Verify requested Flutter branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual_sha="$(git ls-remote "$FLUTTER_GTK4_REPOSITORY" "refs/heads/$FLUTTER_GTK4_BRANCH" | awk '{print $1}')"
+          test "$actual_sha" = "$FLUTTER_GTK4_SHA"
+          echo "Using $FLUTTER_GTK4_REPOSITORY branch $FLUTTER_GTK4_BRANCH at $actual_sha"
+
+      - name: Register Flutter fork with FVM
+        run: fvm fork add richyo-codes "$FLUTTER_GTK4_REPOSITORY"
+
+      - name: Install pinned Flutter GTK4 SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          FLUTTER_STORAGE_BASE_URL="$FLUTTER_ENGINE_STORAGE_BASE_URL" \
+            fvm install "richyo-codes/$FLUTTER_GTK4_SHA" --setup --skip-pub-get
+          fvm use "richyo-codes/$FLUTTER_GTK4_SHA" --force --skip-setup --skip-pub-get
+
+      - name: Verify Flutter SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .fvm/flutter_sdk rev-parse HEAD)" = "$FLUTTER_GTK4_SHA"
+          test "$(cat .fvm/flutter_sdk/bin/cache/engine.stamp)" = "$FLUTTER_PREBUILT_ENGINE_VERSION"
+          bash ./tools/install_gtk4_prebuilt_engine.sh .fvm/flutter_sdk
+          fvm flutter --version
+          fvm flutter precache --linux
+          test -f .fvm/flutter_sdk/bin/cache/artifacts/engine/linux-x64-release/libflutter_linux_gtk4.so
+
+      - name: Select GTK4 Linux runner
+        run: bash ./tools/select_linux_runner.sh gtk4
+
+      - name: Enable Linux desktop
+        run: fvm flutter config --enable-linux-desktop
+
+      - name: Flutter pub get
+        run: fvm flutter pub get
+
+      - name: Build Linux GTK4 release
+        run: fvm flutter build linux --release --linux-gtk=gtk4
+
+      - name: Include LICENSE in bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle=build/linux-gtk4/x64/release/bundle
+          test -f "$bundle/lib/libflutter_linux_gtk4.so"
+          ldd "$bundle/boomprint" | tee "$RUNNER_TEMP/boomprint-gtk4-linkage.txt"
+          grep -q 'libgtk-4.so' "$RUNNER_TEMP/boomprint-gtk4-linkage.txt"
+          if grep -Eq 'libgtk-3.so|not found' "$RUNNER_TEMP/boomprint-gtk4-linkage.txt"; then
+            echo "GTK4 bundle contains GTK3 or unresolved libraries." >&2
+            exit 1
+          fi
+          cp LICENSE "$bundle/"
+          printf 'App commit: %s\nFlutter branch: %s\nFlutter commit: %s\nEngine artifacts: %s\n' \
+            "$GITHUB_SHA" "$FLUTTER_GTK4_BRANCH" "$FLUTTER_GTK4_SHA" \
+            "$FLUTTER_PREBUILT_ENGINE_VERSION" > "$bundle/BUILD_INFO.txt"
+
+      - name: Upload Linux GTK4 build artifact
+        uses: richnetdesign/git-artifact-upload@v2
+        with:
+          name: boomprint-linux-build-gtk4-custom-flutter
+          version: ${{ github.sha }}
+          filename: boomprint-linux-build-gtk4-custom-flutter
+          path: build/linux-gtk4/x64/release/bundle/**
           append-max-detail-suffix: true
           retention-days: 7
 
@@ -359,7 +478,7 @@ jobs:
       - name: Select Linux runner variant
         shell: bash
         run: |
-          bash ./tool/select_linux_runner.sh "$LINUX_GTK_VARIANT"
+          bash ./tools/select_linux_runner.sh "$LINUX_GTK_VARIANT"
           if [[ "$LINUX_GTK_VARIANT" == "gtk4" ]]; then
             echo "LINUX_GTK_ARTIFACT_SUFFIX=-gtk4" >> "$GITHUB_ENV"
           else
@@ -477,7 +596,7 @@ jobs:
       - name: Select Linux runner variant
         shell: bash
         run: |
-          bash ./tool/select_linux_runner.sh "$LINUX_GTK_VARIANT"
+          bash ./tools/select_linux_runner.sh "$LINUX_GTK_VARIANT"
           if [[ "$LINUX_GTK_VARIANT" == "gtk4" ]]; then
             echo "LINUX_GTK_ARTIFACT_SUFFIX=-gtk4" >> "$GITHUB_ENV"
           else
@@ -494,7 +613,7 @@ jobs:
         run: flutter build linux --release
 
       - name: Build Flatpak bundle
-        run: bash ./tool/build_flatpak_container.sh --out-dir "$RUNNER_TEMP/boomprint-flatpak"
+        run: bash ./tools/build_flatpak_container.sh --out-dir "$RUNNER_TEMP/boomprint-flatpak"
 
       - name: Stage Flatpak release asset
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -589,7 +708,7 @@ jobs:
       - name: Select Linux runner variant
         shell: bash
         run: |
-          bash ./tool/select_linux_runner.sh "$LINUX_GTK_VARIANT"
+          bash ./tools/select_linux_runner.sh "$LINUX_GTK_VARIANT"
           if [[ "$LINUX_GTK_VARIANT" == "gtk4" ]]; then
             echo "LINUX_GTK_ARTIFACT_SUFFIX=-gtk4" >> "$GITHUB_ENV"
           else
@@ -606,7 +725,7 @@ jobs:
         run: flutter build linux --release
 
       - name: Build Debian package
-        run: bash ./tool/build_deb.sh --version "$SEMVER"
+        run: bash ./tools/build_deb.sh --version "$SEMVER"
 
       - name: Upload Debian release asset
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -693,7 +812,7 @@ jobs:
       - name: Select Linux runner variant
         shell: bash
         run: |
-          bash ./tool/select_linux_runner.sh "$LINUX_GTK_VARIANT"
+          bash ./tools/select_linux_runner.sh "$LINUX_GTK_VARIANT"
           if [[ "$LINUX_GTK_VARIANT" == "gtk4" ]]; then
             echo "LINUX_GTK_ARTIFACT_SUFFIX=-gtk4" >> "$GITHUB_ENV"
           else
@@ -710,7 +829,7 @@ jobs:
         run: flutter build linux --release
 
       - name: Build RPM package
-        run: bash ./tool/build_rpm.sh --version "$SEMVER"
+        run: bash ./tools/build_rpm.sh --version "$SEMVER"
 
       - name: Upload RPM release asset
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')

@@ -6,10 +6,11 @@ BUNDLE_DIR="$ROOT_DIR/build/linux/x64/release/bundle"
 OUT_DIR="$ROOT_DIR/build/packages/rpm"
 PACKAGE_NAME="boomprint"
 INSTALL_DIR="/opt/boomprint"
+GTK_VARIANT=gtk3
 
 usage() {
   cat <<'EOF'
-Usage: ./tool/build_rpm.sh [--bundle-dir PATH] [--out-dir PATH] [--version VERSION] [--release RELEASE]
+Usage: ./tools/build_rpm.sh [--bundle-dir PATH] [--out-dir PATH] [--version VERSION] [--release RELEASE]
 
 Build an RPM from an existing Flutter Linux release bundle.
 Default bundle path: build/linux/x64/release/bundle
@@ -22,6 +23,10 @@ RPM_VERSION=""
 RPM_RELEASE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --gtk)
+      GTK_VARIANT="$2"
+      shift 2
+      ;;
     --bundle-dir)
       BUNDLE_DIR="$2"
       shift 2
@@ -50,6 +55,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+case "$GTK_VARIANT" in
+  gtk3) GTK_REQUIRES=gtk3 ;;
+  gtk4) GTK_REQUIRES=gtk4 ;;
+  *) echo "Expected --gtk gtk3 or gtk4" >&2; exit 2 ;;
+esac
+if [[ "$GTK_VARIANT" == gtk4 && "$BUNDLE_DIR" == "$ROOT_DIR/build/linux/x64/release/bundle" ]]; then
+  BUNDLE_DIR="$ROOT_DIR/build/linux-gtk4/x64/release/bundle"
+fi
+
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "Missing required command: $1" >&2
@@ -57,10 +71,25 @@ require_cmd() {
   }
 }
 
+require_patchelf() {
+  if command -v patchelf >/dev/null 2>&1; then
+    return
+  fi
+
+  cat >&2 <<'EOF'
+Missing required command: patchelf
+Install it with your system package manager (for example, `sudo dnf install patchelf`),
+or run this build in a Nix shell that provides it:
+  nix shell nixpkgs#patchelf --command ./tools/build_rpm.sh
+EOF
+  exit 1
+}
+
 require_cmd rpmbuild
 require_cmd install
 require_cmd sed
 require_cmd tar
+require_patchelf
 
 normalize_rpm_token() {
   printf '%s' "$1" | sed -E \
@@ -114,6 +143,14 @@ if [[ ! -f "$BUNDLE_DIR/boomprint" ]]; then
   exit 1
 fi
 
+if [[ "$GTK_VARIANT" == gtk4 ]]; then
+  require_cmd readelf
+  if readelf -d "$BUNDLE_DIR/lib/libcnativeapi.so" | grep -q 'Shared library: \[libgtk-3.so'; then
+    echo "cnativeapi links GTK3 into the GTK4 bundle. Rebuild the plugin without GTK3/appindicator before packaging." >&2
+    exit 1
+  fi
+fi
+
 mkdir -p "$OUT_DIR"
 RPMROOT=$(mktemp -d "$OUT_DIR/rpmbuild.XXXXXX")
 trap 'rm -rf "$RPMROOT"' EXIT
@@ -127,6 +164,13 @@ install -d "$SOURCE_DIR/usr/share/icons/hicolor/scalable/apps"
 install -d "$SOURCE_DIR/usr/share/licenses/$PACKAGE_NAME"
 
 cp -a "$BUNDLE_DIR/." "$SOURCE_DIR$INSTALL_DIR/"
+if [[ "$GTK_VARIANT" == gtk4 ]]; then
+  test -f "$BUNDLE_DIR/lib/libflutter_linux_gtk4.so"
+fi
+patchelf --set-rpath '$ORIGIN/lib' "$SOURCE_DIR$INSTALL_DIR/boomprint"
+while IFS= read -r -d '' library; do
+  patchelf --set-rpath '$ORIGIN' "$library"
+done < <(find "$SOURCE_DIR$INSTALL_DIR/lib" -maxdepth 1 -type f -name '*.so*' -print0)
 install -m755 "$ROOT_DIR/packaging/common/boomprint" "$SOURCE_DIR/usr/bin/boomprint"
 install -m644 "$ROOT_DIR/packaging/common/boomprint.desktop" \
   "$SOURCE_DIR/usr/share/applications/boomprint.desktop"
@@ -139,7 +183,8 @@ tar -C "$RPMROOT/SOURCES" -czf "$RPMROOT/SOURCES/${PACKAGE_NAME}-${RPM_VERSION}.
 
 sed \
   -e "s/@VERSION@/$RPM_VERSION/g" \
-  -e "s/@RELEASE@/$RPM_RELEASE/g" \
+    -e "s/@RELEASE@/$RPM_RELEASE/g" \
+    -e "s/@GTK_REQUIRES@/$GTK_REQUIRES/g" \
   "$ROOT_DIR/packaging/rpm/boomprint.spec.in" > "$RPMROOT/SPECS/${PACKAGE_NAME}.spec"
 
 rpmbuild \

@@ -1,0 +1,38 @@
+app-id: com.rnd.boomprint
+branch: gtk4
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: run-boomprint
+build-options:
+  no-debuginfo: true
+finish-args:
+  - --share=network
+  - --socket=wayland
+  - --socket=x11
+  - --device=dri
+  - --share=ipc
+  - --socket=pulseaudio
+modules:
+  - name: boomprint
+    buildsystem: simple
+    sources:
+      - type: dir
+        path: ../build/linux-gtk4/x64/release/bundle
+        dest: bundle
+      - type: dir
+        path: .
+        dest: flatpak
+      - type: file
+        path: ../LICENSE
+    build-commands:
+      - install -Dm755 bundle/boomprint /app/bin/boomprint
+      - cp -r bundle/data /app/bin/
+      - cp -r bundle/lib /app/bin/
+      - install -Dm644 LICENSE /app/share/licenses/com.rnd.boomprint/LICENSE
+      - |
+        printf '%s\n' '#!/bin/sh' 'export LD_LIBRARY_PATH="/app/bin/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"' 'exec /app/bin/boomprint "$@"' > /app/bin/run-boomprint
+      - chmod 755 /app/bin/run-boomprint
+      - install -Dm644 flatpak/com.rnd.boomprint.desktop /app/share/applications/com.rnd.boomprint.desktop
+      - install -Dm644 flatpak/com.rnd.boomprint.metainfo.xml /app/share/metainfo/com.rnd.boomprint.metainfo.xml
+      - install -Dm644 flatpak/icons/com.rnd.boomprint.svg /app/share/icons/hicolor/scalable/apps/com.rnd.boomprint.svg

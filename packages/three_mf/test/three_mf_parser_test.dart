@@ -120,5 +120,54 @@ G1 X10 Y10
       expect(info!.nozzleHints, containsAll(['0.4', '0.6']));
       expect(info.nozzleSummary, '0.4, 0.6');
     });
+
+    test(
+      'parses Bambu Studio JSON settings and multi-filament arrays',
+      () async {
+        final info = await _parseCase({
+          'Metadata/project_settings.config': '''
+{
+  "project_name": "Four-color test",
+  "printer_model": "Bambu Lab X1 Carbon",
+  "filament_type": ["PETG", "PLA"],
+  "filament_settings_id": [
+    "Bambu PETG Basic @BBL X1C",
+    "Bambu PLA Basic @BBL X1C"
+  ],
+  "filament_colour": ["#0055CC", "#FFFFFF"],
+  "nozzle_diameter": ["0.4", "0.4"],
+  "nozzle_type": "Standard"
+}
+''',
+        });
+
+        expect(info, isNotNull);
+        expect(info!.projectName, 'Four-color test');
+        expect(info.printerProfile, 'Bambu Lab X1 Carbon');
+        expect(info.orderedFilaments, hasLength(2));
+        expect(info.orderedFilaments.map((filament) => filament.slot), [0, 1]);
+        expect(
+          info.orderedFilaments.first.settingsId,
+          'Bambu PETG Basic @BBL X1C',
+        );
+        expect(info.orderedFilaments.last.material, 'PLA');
+        expect(info.nozzleHints, ['0.4']);
+      },
+    );
+
+    test('parses standard 3MF metadata elements', () async {
+      final info = await _parseCase({
+        '3D/3dmodel.model': '''
+<?xml version="1.0" encoding="UTF-8"?>
+<model>
+  <metadata name="Title">Bench bracket</metadata>
+  <metadata name="Application">Bambu Studio</metadata>
+</model>
+''',
+      });
+
+      expect(info, isNotNull);
+      expect(info!.projectName, 'Bench bracket');
+    });
   });
 }

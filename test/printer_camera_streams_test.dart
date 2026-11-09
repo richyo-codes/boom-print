@@ -5,12 +5,17 @@ import 'package:boomprint/settings_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('builds one API-exposed built-in camera stream for X2C', () {
+  test('migrates the mistaken X2C settings key to X2D', () {
+    expect(PrinterUrlTypeX.parse('bambu_x2c'), PrinterUrlType.bambuX2D);
+    expect(PrinterUrlType.bambuX2D.storageKey, 'bambu_x2d');
+  });
+
+  test('builds one API-exposed built-in camera stream for X2D', () {
     final settings = AppSettings(
       specialCode: '12345678',
       printerIp: '192.168.1.50',
       serialNumber: '00M000000000000',
-      selectedFormat: PrinterUrlType.bambuX2C,
+      selectedFormat: PrinterUrlType.bambuX2D,
       customUrl: '',
     );
 

@@ -95,7 +95,7 @@ class ConnectionPreflight {
         return '$scheme://$userInfo$host:$port$normalizedPath';
       case PrinterUrlType.bambuX1C:
       case PrinterUrlType.bambuP1S:
-      case PrinterUrlType.bambuX2C:
+      case PrinterUrlType.bambuX2D:
       case PrinterUrlType.bambuH2C:
       case PrinterUrlType.bambuH2D:
       case PrinterUrlType.bambuH2S:
@@ -188,7 +188,7 @@ class ConnectionPreflight {
     switch (settings.selectedFormat) {
       case PrinterUrlType.bambuX1C:
       case PrinterUrlType.bambuP1S:
-      case PrinterUrlType.bambuX2C:
+      case PrinterUrlType.bambuX2D:
       case PrinterUrlType.bambuH2C:
       case PrinterUrlType.bambuH2D:
       case PrinterUrlType.bambuH2S:
@@ -203,7 +203,7 @@ class ConnectionPreflight {
     switch (settings.selectedFormat) {
       case PrinterUrlType.bambuX1C:
       case PrinterUrlType.bambuP1S:
-      case PrinterUrlType.bambuX2C:
+      case PrinterUrlType.bambuX2D:
       case PrinterUrlType.bambuH2C:
       case PrinterUrlType.bambuH2D:
       case PrinterUrlType.bambuH2S:

@@ -122,6 +122,7 @@ class ThreeMfFilamentInfo {
   final String? label;
   final String? material;
   final String? profile;
+  final String? settingsId;
   final String? brand;
   final String? color;
   final String? nozzleDiameter;
@@ -132,6 +133,7 @@ class ThreeMfFilamentInfo {
     required this.label,
     required this.material,
     required this.profile,
+    required this.settingsId,
     required this.brand,
     required this.color,
     required this.nozzleDiameter,
@@ -144,6 +146,8 @@ class ThreeMfFilamentInfo {
       if (label != null && label!.trim().isNotEmpty) label!.trim(),
       if (material != null && material!.trim().isNotEmpty) material!.trim(),
       if (profile != null && profile!.trim().isNotEmpty) profile!.trim(),
+      if (settingsId != null && settingsId!.trim().isNotEmpty)
+        settingsId!.trim(),
       if (brand != null && brand!.trim().isNotEmpty) brand!.trim(),
       if (color != null && color!.trim().isNotEmpty) color!.trim(),
       if (nozzleDiameter != null && nozzleDiameter!.trim().isNotEmpty)
@@ -164,6 +168,7 @@ class ThreeMfFilamentInfo {
     addToken(label);
     addToken(material);
     addToken(profile);
+    addToken(settingsId);
     addToken(brand);
     addToken(color);
     return out;

@@ -9,7 +9,7 @@ INSTALL_DIR="/opt/boomprint"
 
 usage() {
   cat <<'EOF'
-Usage: ./tool/build_deb.sh [--bundle-dir PATH] [--out-dir PATH] [--version VERSION] [--arch ARCH]
+Usage: ./tools/build_deb.sh [--bundle-dir PATH] [--out-dir PATH] [--version VERSION] [--arch ARCH]
 
 Build a .deb from an existing Flutter Linux release bundle.
 Default bundle path: build/linux/x64/release/bundle

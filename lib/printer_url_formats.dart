@@ -1,7 +1,7 @@
 enum PrinterUrlType {
   bambuX1C,
   bambuP1S,
-  bambuX2C,
+  bambuX2D,
   bambuH2C,
   bambuH2D,
   bambuH2S,
@@ -13,7 +13,7 @@ extension PrinterUrlTypeX on PrinterUrlType {
   String get displayName => switch (this) {
     PrinterUrlType.bambuX1C => 'Bambu X1C',
     PrinterUrlType.bambuP1S => 'Bambu P1S',
-    PrinterUrlType.bambuX2C => 'Bambu X2C',
+    PrinterUrlType.bambuX2D => 'Bambu X2D',
     PrinterUrlType.bambuH2C => 'Bambu H2C',
     PrinterUrlType.bambuH2D => 'Bambu H2D',
     PrinterUrlType.bambuH2S => 'Bambu H2S',
@@ -25,7 +25,7 @@ extension PrinterUrlTypeX on PrinterUrlType {
   String get storageKey => switch (this) {
     PrinterUrlType.bambuX1C => 'bambu_x1c',
     PrinterUrlType.bambuP1S => 'bambu_p1s',
-    PrinterUrlType.bambuX2C => 'bambu_x2c',
+    PrinterUrlType.bambuX2D => 'bambu_x2d',
     PrinterUrlType.bambuH2C => 'bambu_h2c',
     PrinterUrlType.bambuH2D => 'bambu_h2d',
     PrinterUrlType.bambuH2S => 'bambu_h2s',
@@ -38,7 +38,7 @@ extension PrinterUrlTypeX on PrinterUrlType {
       'rtsps://bblp:\${specialcode}@\${printerip}:322/streaming/live/1',
     PrinterUrlType.bambuP1S =>
       'rtsps://bblp:\${specialcode}@\${printerip}:322/streaming/live/1',
-    PrinterUrlType.bambuX2C =>
+    PrinterUrlType.bambuX2D =>
       'rtsps://bblp:\${specialcode}@\${printerip}:322/streaming/live/1',
     PrinterUrlType.bambuH2C =>
       'rtsps://bblp:\${specialcode}@\${printerip}:322/streaming/live/1',
@@ -53,7 +53,7 @@ extension PrinterUrlTypeX on PrinterUrlType {
   bool get isBambuFamily => switch (this) {
     PrinterUrlType.bambuX1C ||
     PrinterUrlType.bambuP1S ||
-    PrinterUrlType.bambuX2C ||
+    PrinterUrlType.bambuX2D ||
     PrinterUrlType.bambuH2C ||
     PrinterUrlType.bambuH2D ||
     PrinterUrlType.bambuH2S => true,
@@ -66,7 +66,7 @@ extension PrinterUrlTypeX on PrinterUrlType {
     PrinterUrlType.bambuH2S => true,
     PrinterUrlType.bambuX1C ||
     PrinterUrlType.bambuP1S ||
-    PrinterUrlType.bambuX2C ||
+    PrinterUrlType.bambuX2D ||
     PrinterUrlType.genericRtsp ||
     PrinterUrlType.custom => false,
   };
@@ -77,9 +77,9 @@ extension PrinterUrlTypeX on PrinterUrlType {
     PrinterUrlType.bambuH2S => 2,
     PrinterUrlType.bambuX1C ||
     PrinterUrlType.bambuP1S ||
-    // The X2C exposes one LAN RTSP stream. Do not generate a second
+    // The X2D exposes one LAN RTSP stream. Do not generate a second
     // /streaming/live/<n> URL merely because the machine has multiple views.
-    PrinterUrlType.bambuX2C ||
+    PrinterUrlType.bambuX2D ||
     PrinterUrlType.genericRtsp ||
     PrinterUrlType.custom => 1,
   };
@@ -98,7 +98,7 @@ extension PrinterUrlTypeX on PrinterUrlType {
       case 'bambu_x2d':
       case 'bambu x2c':
       case 'bambu_x2c':
-        return PrinterUrlType.bambuX2C;
+        return PrinterUrlType.bambuX2D;
       case 'bambu h2c':
       case 'bambu_h2c':
         return PrinterUrlType.bambuH2C;

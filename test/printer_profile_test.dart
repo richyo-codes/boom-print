@@ -7,7 +7,7 @@ void main() {
     final profile = PrinterProfile.fromLocalPrinterFields(
       id: 'active',
       displayName: 'Active printer',
-      printerType: PrinterUrlType.bambuX2C,
+      printerType: PrinterUrlType.bambuX2D,
       printerIp: '192.168.1.50',
       serialNumber: '00M000000000000',
       accessCode: '12345678',

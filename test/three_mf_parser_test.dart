@@ -21,6 +21,7 @@ Uint8List _buildSampleThreeMf() {
 ; filament_type = PETG
 ; filament_name = Bambu PETG Basic
 ; nozzle_diameter = 0.4
+; nozzle_type = Standard
 ; printer_profile = Bambu X1C
 G1 X0 Y0
 '''),
@@ -41,6 +42,8 @@ void main() {
     expect(info.plates.first.index, 1);
     expect(info.plates.first.filamentHints, isNotEmpty);
     expect(info.filamentHints, anyElement(contains('Bambu PETG Basic')));
+    expect(info.nozzleHints, ['0.4']);
+    expect(info.nozzleSummary, '0.4');
     expect(info.compatibilityWarningFor('AMS 1 / Slot 0 • PETG'), isNull);
     expect(info.compatibilityWarningFor('PLA'), isNotNull);
   });

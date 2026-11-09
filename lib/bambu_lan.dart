@@ -22,6 +22,7 @@
 
 import 'dart:async';
 
+import 'package:boomprint/bambu_hms_catalog.g.dart';
 import 'package:boomprint/bambu_mqtt.dart';
 
 // ============================
@@ -101,24 +102,42 @@ class BambuReportEvent {
 
 /// A hardware-management fault reported by the printer.
 ///
-/// Bambu's report protocol carries HMS codes as two 32-bit values. The
-/// official troubleshooting wiki uses the same values in its URL, so retain
+/// Bambu's report protocol carries HMS codes as two 32-bit values. Retain
 /// them even when a firmware version does not include a human-readable text.
 class BambuHmsEvent {
   final int code;
   final int attr;
+  final String? message;
 
-  const BambuHmsEvent({required this.code, required this.attr});
+  const BambuHmsEvent({required this.code, required this.attr, this.message});
+
+  // MQTT attr identifies the component; code contains the level and condition.
+  // Bambu Studio's DevHMSItem::get_long_error_code uses this ordering.
+  String get catalogCode =>
+      '${attr.toRadixString(16).padLeft(8, '0')}'
+              '${code.toRadixString(16).padLeft(8, '0')}'
+          .toUpperCase();
 
   String get displayCode =>
-      '${(code >> 16).toRadixString(16).padLeft(4, '0').toUpperCase()}-'
-      '${(code & 0xffff).toRadixString(16).padLeft(4, '0').toUpperCase()}-'
       '${(attr >> 16).toRadixString(16).padLeft(4, '0').toUpperCase()}-'
-      '${(attr & 0xffff).toRadixString(16).padLeft(4, '0').toUpperCase()}';
+      '${(attr & 0xffff).toRadixString(16).padLeft(4, '0').toUpperCase()}-'
+      '${(code >> 16).toRadixString(16).padLeft(4, '0').toUpperCase()}-'
+      '${(code & 0xffff).toRadixString(16).padLeft(4, '0').toUpperCase()}';
 
-  String get wikiUrl =>
-      'https://wiki.bambulab.com/en/x1/troubleshooting/hmscode/'
-      '${displayCode.replaceAll('-', '_')}';
+  /// Some HMS codes are maintenance notices rather than printer faults.
+  /// Bambu does not currently include a text message for this code in MQTT.
+  bool get isInformational =>
+      catalogCode == '0500010000030004' || code >> 16 == 4;
+
+  bool get isError => !isInformational && (code >> 16 == 1 || code >> 16 == 2);
+
+  String? get knownMessage {
+    if (message?.trim().isNotEmpty == true) return message!.trim();
+    if (catalogCode == '0500010000030004') {
+      return 'MicroSD card is full. Free space on the card or replace it.';
+    }
+    return bambuHmsDescriptions[catalogCode];
+  }
 }
 
 /// A physical AMS tray or external spool reported by the printer.
